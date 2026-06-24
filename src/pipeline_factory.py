@@ -1,33 +1,42 @@
 from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.compose import make_column_selector
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, RobustScaler
 from xgboost import XGBClassifier
 
 def build_health_pipeline(scale_pos_weight, best_params=None):
     """
-    Construye un Pipeline empaquetado de Scikit-Learn que incluye:
-    1. Imputación de nulos (Moda)
-    2. Codificación Categórica (One-Hot Encoding seguro)
-    3. Escalado de características (RobustScaler)
-    4. Clasificador Avanzado (XGBoost)
+    Construye una arquitectura limpia y empaquetada que separa flujos de datos:
+    1. Flujo Numérico: Imputación por mediana + Escalado robusto ante outliers.
+    2. Flujo Categórico: Imputación por moda + One-Hot Encoding seguro.
     
-    Evita por completo el Data Leakage al encapsular las transformaciones.
+    Evita de forma absoluta el Data Leakage utilizando selectores dinámicos por tipo de dato.
     """
     if best_params is None:
         best_params = {}
         
-    # Definimos la secuencia de pasos secuenciales
-    pipeline = Pipeline([
-        # Paso 1: Tratar nulos restantes con la moda
+    # Pipeline especializado para variables numéricas (edad, peso, etc.)
+    numeric_transformer = Pipeline([
+        ('imputer', SimpleImputer(strategy='median')),
+        ('scaler', RobustScaler())
+    ])
+    
+    # Pipeline especializado para variables categóricas o de texto
+    categorical_transformer = Pipeline([
         ('imputer', SimpleImputer(strategy='most_frequent')),
-        
-        # Paso 2: Convertir categorías numéricas a dummis (One-Hot) de forma segura
-        ('encoder', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False)),
-        
-        # Paso 3: Escalar los rangos de manera robusta ante outliers
-        ('scaler', RobustScaler()),
-        
-        # Paso 4: El motor de predicción optimizado con sus pesos nativos
+        ('encoder', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False))
+    ])
+    
+    # El procesador inteligente: Aplica cada flujo según el tipo de columna automáticamente
+    preprocessor = ColumnTransformer(transformers=[
+        ('num', numeric_transformer, make_column_selector(dtype_include=['int64', 'float64'])),
+        ('cat', categorical_transformer, make_column_selector(dtype_include=['object', 'category', 'bool']))
+    ], remainder='passthrough')
+    
+    # Pipeline final consolidado
+    pipeline = Pipeline([
+        ('preprocessor', preprocessor),
         ('classifier', XGBClassifier(
             scale_pos_weight=scale_pos_weight,
             use_label_encoder=False,
