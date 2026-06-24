@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{url}
+\usepackage{float} % Para mejorar el posicionamiento de figuras
 
 \begin{document}
 
@@ -87,6 +88,11 @@ Random Forest Regressor & 2.8412 & 0.2389 \\
 
 El Random Forest exhibió una reducción notable del Error Cuadrático Medio (RMSE), consolidando un $R^2$ superior. Este comportamiento se justifica técnicamente debido a que los hábitos alimenticios y el sedentarismo no impactan el IMC de forma lineal; existen efectos de interacción multivariable complejos (ej. alta ingesta calórica combinada con nula actividad física y horas prolongadas de pantalla) que los árboles de decisión segmentan con mayor plasticidad que una ecuación hiperplana lineal.
 
+\subsubsection{Limitaciones del Modelo de Regresión (IMC)}
+Es importante destacar que el modelo de regresión diseñado para estimar el Índice de Masa Corporal (IMC) presentó un desempeño limitado en cuanto a su poder predictivo absoluto, evidenciado por un bajo coeficiente de determinación (\(R^2\)) durante la validación cruzada. Este resultado es esperable y se justifica por la naturaleza de los datos y el diseño del experimento. El IMC es una medida antropométrica directa determinada fundamentalmente por el peso y la estatura del individuo. Al haber excluido deliberadamente estas variables (\(Q4\) y \(Q5\)) del conjunto de características para evitar la fuga de datos (*data leakage*), el modelo se vio forzado a inferir el IMC basándose únicamente en factores conductuales indirectos (como hábitos alimenticios, actividad física y tiempo frente a pantallas).
+
+Por lo tanto, el sistema no está diseñado para ser una herramienta de diagnóstico clínico individual para la obesidad, sino más bien como un sistema de alerta temprana (*early-warning*) a nivel poblacional. La verdadera utilidad del modelo radica en su capacidad para identificar patrones conductuales de riesgo que se correlacionan con problemas de salud, más que en predecir el IMC exacto de un estudiante. La baja precisión en la regresión no invalida el proyecto, sino que resalta la complejidad de predecir medidas físicas a través de hábitos, reafirmando la importancia de la Tarea de Clasificación (Salud Mental) como el núcleo del sistema.
+
 \subsection{Tarea B: Clasificación de Riesgo de Salud Mental}
 El desafío principal de esta tarea radicaba en el marcado desbalance epidemiológico de las clases (donde los casos positivos representan menos del 15\% del total muestral). Inicialmente, la aplicación de técnicas de sobremuestreo sintético (SMOTE) combinado con un umbral clásico de decisión del 50\% ($0.50$) generó un volumen inaceptable de 45 Falsos Negativos, lo que ponía en riesgo la vida de estudiantes vulnerables al catalogarlos como ``sanos''.
 
@@ -114,6 +120,15 @@ Verdaderos Positivos & 63  & 86  & 79  \\
 
 La Tabla~\ref{tab:clasificacion} demuestra la evolución del comportamiento del modelo. El ajuste extremo a $0.35$ reducía los Falsos Negativos a 22, pero disparaba los Falsos Positivos a 313, generando un colapso operativo por saturación de falsas alarmas. La optimización matemática en el umbral $0.46$ redujo los Falsos Negativos de 45 a solo 29 de forma controlada, conteniendo los Falsos Positivos en 175 y alcanzando el F1-Score más alto y balanceado del experimento ($0.4365$).
 
+Adicionalmente, se evaluó la capacidad de discriminación del modelo mediante la Curva ROC (Receiver Operating Characteristic), obteniéndose un Área Bajo la Curva (AUC) de \textbf{0.87}. Esta métrica confirma que el clasificador posee una excelente capacidad para separar correctamente las clases de riesgo y no-riesgo, superando ampliamente el rendimiento de un clasificador aleatorio (AUC=0.5). La curva ROC correspondiente se presenta en la Figura~\ref{fig:roc}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{../docs/curva_roc_final.png}
+\caption{Curva ROC del modelo XGBoost optimizado para la detección de riesgo en salud mental. El AUC obtenido es 0.87.}
+\label{fig:roc}
+\end{figure}
+
 \section{Interpretación y Factores Determinantes}
 La extracción de las propiedades de importancia intrínseca del modelo XGBoost (Feature Importance) permitió identificar los vectores conductuales y contextuales que detonan el riesgo en salud mental en los adolescentes salvadoreños.
 
@@ -125,13 +140,25 @@ Los tres factores con mayor peso predictivo arrojados por el algoritmo correspon
 \end{enumerate}
 
 \section{Recomendaciones de Política Pública}
-Traduciendo los hallazgos técnicos en decisiones estratégicas para el despacho ministerial, se plantean tres ejes de intervención focalizada:
+Traduciendo los hallazgos técnicos en decisiones estratégicas para el despacho ministerial, se plantean los siguientes ejes de intervención focalizada:
 
 \begin{itemize}
-    \item \textbf{Despliegue de Unidades Móviles de Salud Mental Escolar:} Utilizando el modelo predictivo optimizado (Umbral 0.46), el MINSAL puede mapear y clasificar los centros escolares del país. Aquellas escuelas cuyas encuestas agregadas arrojen altas probabilidades de riesgo colectivo deben recibir de forma prioritaria la asignación de psicólogos en planta, optimizando el presupuesto público del plan nacional de salud.
+    \item \textbf{Despliegue de Unidades Móviles de Salud Mental Escolar:} Utilizando el modelo predictivo optimizado (umbral 0.46), el MINSAL puede mapear y clasificar los centros escolares del país. Aquellas escuelas cuyas encuestas agregadas arrojen altas probabilidades de riesgo colectivo deben recibir de forma prioritaria la asignación de psicólogos en planta, optimizando el presupuesto público del plan nacional de salud.
+
     \item \textbf{Intervención Interinstitucional MINSAL-MINED contra el Bullying:} Dado que el acoso escolar es la variable predictora predominante, no es posible solucionar la salud mental desde un enfoque puramente hospitalario. Se vuelve mandatorio co-diseñar junto al Ministerio de Educación protocolos vinculantes de prevención de violencia escolar, actuando directamente sobre la raíz del vector de riesgo.
+
     \item \textbf{Red de Alerta Temprana Automatizada:} Implementar a nivel nacional la infraestructura digital necesaria para que la GSHS u otros instrumentos de tamizaje escolar se digitalicen y procesen en tiempo real por este pipeline predictivo. Esto facultará a las regiones de salud del MINSAL a recibir alertas tempranas semestrales y mitigar incidentes de autolesión antes de su ocurrencia.
+
+    \item \textbf{Fortalecimiento de la Salud Mental y Apoyo Social:} La alta importancia de variables relacionadas con sentimientos de soledad, falta de amigos cercanos o bullying sugiere que el Ministerio debe priorizar el establecimiento de programas de contención psicológica y consejería escolar. Se recomienda la implementación de "Clubes de Apoyo entre Pares" y la capacitación de docentes para detectar signos tempranos de aislamiento social.
+
+    \item \textbf{Prevención del Consumo de Sustancias:} La relevancia de las variables asociadas al consumo de alcohol o drogas indica una fuerte asociación con el riesgo de salud mental. Se sugiere intensificar las campañas de prevención en los centros educativos, enfocadas en la educación sobre los riesgos del consumo de sustancias, y establecer rutas claras de derivación a servicios de salud para jóvenes que presenten esta conducta.
+
+    \item \textbf{Promoción de Entornos Escolares Seguros:} Las variables asociadas a experiencias de violencia y acoso escolar deben abordarse mediante políticas orientadas a la creación de protocolos estrictos contra el acoso (*anti-bullying*) y a la promoción de una cultura de respeto y no violencia dentro de las aulas. Esto incluye la creación de canales anónimos para reportar incidentes de acoso.
+
+    \item \textbf{Educación Nutricional y Hábitos Saludables:} Aunque el modelo de IMC tuvo un rendimiento bajo, la presencia de variables alimentarias en el top 10 de la clasificación sugiere un vínculo entre los hábitos de alimentación no saludables y el deterioro de la salud mental. Se recomienda fomentar programas de alimentación saludable y huertos escolares que no solo aborden la nutrición, sino que también funcionen como espacios de integración social.
 \end{itemize}
+
+En conclusión, el sistema predictivo propuesto ofrece una herramienta de priorización para el MINSAL, permitiendo focalizar recursos (psicólogos, campañas, talleres) en las escuelas con mayor índice de riesgo, identificado a través de las variables de comportamiento que hemos destacado.
 
 \section{Conclusiones}
 Este proyecto demuestra el inmenso valor de la Ciencia de Datos orientada a la salud de la República de El Salvador. Mediante la correcta estructuración y preprocesamiento de la información de la GSHS, se superó el obstáculo de los valores nulos anómalos y se previno el sesgo por Data Leakage al eliminar variables antropométricas en la estimación del IMC. Asimismo, la calibración matemática del umbral de decisión en el modelo XGBoost proveyó al Ministerio de Salud de una herramienta validada científicamente que balancea la sensibilidad clínica con la viabilidad financiera y operacional del estado, sentando las bases para una medicina preventiva moderna basada en algoritmos predictivos robustos.
