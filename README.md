@@ -1,33 +1,91 @@
-# Proyecto_minsal
-# Sistema de Predicción de Factores de Riesgo en Adolescentes Salvadoreños
+# 📊 Análisis Predictivo GSHS 2013: Riesgos en Adolescentes Salvadoreños
 
-Este repositorio contiene la solución al "Desafío de Machine Learning" propuesto para el Ministerio de Salud (MINSAL) de El Salvador, basado en la Encuesta Global de Salud Escolar (GSHS) de la OMS/OPS de 2013.
+Este repositorio contiene un pipeline de Machine Learning *end-to-end* diseñado para analizar los datos de la encuesta **Global School-based Student Health Survey (GSHS)** de El Salvador (2013). El sistema aplica técnicas de aprendizaje supervisado para predecir indicadores críticos de salud pública, garantizando objetividad matemática y reproducibilidad.
 
 ## 🎯 Objetivos del Proyecto
-El objetivo central es desarrollar un sistema predictivo para identificar patrones de riesgo (alerta temprana) y permitir la focalización de recursos en las escuelas más vulnerables. El proyecto se divide en dos tareas principales dentro de un único pipeline de Machine Learning:
 
-1. **Tarea A (Regresión):** Predecir el Índice de Masa Corporal (IMC) a partir de variables de comportamiento (alimentación, actividad física, etc.), evitando usar peso y estatura directamente.
-2. **Tarea B (Clasificación):** Predecir el riesgo de problemas de salud mental (ej. sentimiento de soledad, ideación suicida) basándose en factores de protección y riesgo.
+El desarrollo se divide en dos tareas analíticas principales:
 
-## 📂 Estructura del Proyecto
+* **Tarea A (Regresión - IMC):** Predicción del Índice de Masa Corporal (IMC) utilizando exclusivamente factores de comportamiento (dieta, sedentarismo, etc.), excluyendo métricas directas como el peso y la estatura. Métricas clave: `RMSE` y `R²`.
+* **Tarea B (Clasificación - Salud Mental):** Detección de adolescentes con alto riesgo en salud mental (ideación suicida, tristeza severa). Implementa técnicas de balanceo de clases (SMOTE/class weights) priorizando la sensibilidad. Métricas clave: `F1-Score (clase minoritaria)` y `AUC-ROC`.
+
+## 📁 Estructura del Directorio
+
+Para asegurar la reproducibilidad del pipeline y evitar redundancia de código, el proyecto sigue una arquitectura estricta de separación de responsabilidades:
+
 ```text
-proyecto_minsal_gshs/
-│
+proyecto_gshs_2013/
 ├── data/
-│   ├── raw/                 # SLV2013_Public_Use.csv (Datos originales, "sucios")
-│   └── processed/           # Datos post-limpieza (sin el valor 1.79e+308) y con variables derivadas
-│
-├── notebooks/
-│   ├── 01_limpieza_y_eda.ipynb      # Carga, reemplazo de nulos extremos y Análisis Exploratorio
-│   ├── 02_feature_engineering.ipynb # Imputación, Target/One-Hot encoding y escalado
-│   └── 03_modelado_y_evaluacion.ipynb # Entrenamiento (Regresión y Clasificación) y métricas
-│
-├── src/                     # Scripts modulares en Python
-│   ├── preprocess.py        # Funciones para limpieza e imputación
-│   └── train.py             # Funciones para validación cruzada y entrenamiento de modelos
-│
-├── docs/
-│   └── reporte_IEEE_MINSAL.pdf  # Documento técnico final en formato IEEE
-│
-├── requirements.txt         # Dependencias necesarias para ejecutar el proyecto
-└── README.md                # Este archivo
+│   ├── raw/                    # Dataset original (textSLV2013_Public_Use.csv) - NUNCA MODIFICAR
+│   ├── processed/              # Matrices particionadas (train.csv, test.csv)
+│   └── codebook.json           # Diccionario estático que mapea códigos QN a descripciones reales
+├── models/                     # Artefactos binarios (.joblib) exportados tras el entrenamiento
+├── notebooks/                  
+│   ├── 01_exploracion.ipynb    # Análisis exploratorio (EDA) y justificación de variables
+│   └── 02_prototipos.ipynb     # Pruebas de concepto interactivo
+├── src/                        # Código fuente modular
+│   ├── __init__.py
+│   ├── data/
+│   │   └── cleaner.py          # Script de limpieza de nulos y partición de datos
+│   ├── features/
+│   │   └── engineering.py      # Transformaciones (Scalers, One-Hot) encapsuladas en Pipelines
+│   ├── models/
+│   │   ├── regression.py       # Algoritmos de predicción de IMC
+│   │   └── classification.py   # Algoritmos de Salud Mental
+│   ├── evaluation/
+│   │   └── metrics.py          # Auditoría de rendimiento (RMSE, F1-Score)
+│   └── predict.py              # Script de inferencia para evaluar modelos pre-entrenados
+├── reports/
+│   ├── figures/                # Exportación de gráficos (ROC, Importancia de variables)
+│   └── informe_tecnico.pdf     # Entregable final formato IEEE
+├── Makefile                    # Orquestador maestro de ejecución por consola
+└── requirements.txt            # Dependencias de Python
+
+```
+
+## ⚙️ Instalación y Configuración
+
+1. Clonar el repositorio.
+2. Crear un entorno virtual (recomendado):
+```bash
+python -m venv venv
+source venv/bin/activate  # En Windows: venv\Scripts\activate
+
+```
+
+
+3. Instalar las dependencias requeridas:
+```bash
+pip install -r requirements.txt
+
+```
+
+4. Asegurar que el archivo de datos original (`textSLV2013_Public_Use.csv`) esté ubicado dentro de `data/raw/`.
+
+## 🚀 Uso y Ejecución del Pipeline
+
+La orquestación del proyecto se maneja íntegramente a través del `Makefile` para asegurar que el orden de ejecución prevenga la fuga de datos (*Data Leakage*).
+
+Desde la raíz del proyecto, ejecuta los siguientes comandos en tu terminal:
+
+* `make data`: Limpia el dataset, imputa nulos y genera las particiones Train/Test.
+* `make features`: Construye las variables derivadas (ej. IMC) y define los transformadores.
+* `make train`: Entrena y ajusta los hiperparámetros de los modelos y los guarda en `models/`.
+* `make evaluate`: Evalúa el rendimiento de los modelos y genera las métricas.
+* `make test`: Lanza el script de inferencia (`predict.py`) para probar el sistema final contra datos aislados.
+* **`make all`**: Ejecuta el ciclo de vida completo del proyecto de inicio a fin.
+* `make clean`: Elimina archivos temporales, cachés y datos procesados para reiniciar el entorno.
+
+## 🔬 Consideraciones Técnicas y Metodológicas
+
+* **Prevención de Data Leakage:** Todo el procesamiento (escalado, imputación) se realiza *después* del split de datos y se encapsula en `Pipelines` de `scikit-learn` ajustados exclusivamente sobre el conjunto de entrenamiento.
+* **Decisión Q vs QN:** Se priorizan las variables recodificadas (`QN`) proporcionadas por la OMS para evitar multicolinealidad perfecta y controlar la dimensionalidad, apoyándose en el `codebook.json` para la interpretabilidad.
+
+## 👨‍💻 Autor
+
+* **Elmer Edenilson Rosales Molina** - *Ingeniería y Análisis de Datos*
+* **Abner Josias Rivas Fuentes** - *Ingeniería y Análisis de Datos*
+
+---
+
+```
