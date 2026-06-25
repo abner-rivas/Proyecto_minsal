@@ -29,7 +29,7 @@ Machine Learning, Salud Pública, GSHS El Salvador, XGBoost, Optimización de Um
 
 \maketitle
 
-\IEEEdisplayn_ntabstractindextext
+\IEEEdisplaynontabstractindextext
 \IEEEpeerreviewmaketitle
 
 \section{Introducción}
@@ -124,13 +124,41 @@ Adicionalmente, se evaluó la capacidad de discriminación del modelo mediante l
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\linewidth]{../docs/curva_roc_final.png}
-\caption{Curva ROC del modelo XGBoost optimizado para la detección de riesgo en salud mental. El AUC obtenido es 0.87.}
+\includegraphics[width=0.8\linewidth]{../reports/figures/roc_curve_clf_best_QN.png}
+\caption{Curva ROC del mejor modelo de clasificación optimizado para la detección de riesgo en salud mental.}
 \label{fig:roc}
 \end{figure}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{../reports/figures/confusion_matrix_clf_best_QN.png}
+\caption{Matriz de confusión del mejor modelo de clasificación sobre el conjunto de prueba, aplicando el umbral óptimo calibrado mediante la curva Precisión-Recall.}
+\label{fig:confusion}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{../reports/figures/residuos_reg_best_QN.png}
+\caption{Análisis de residuos del modelo de regresión (IMC): dispersión de residuos vs. predicción y distribución de errores.}
+\label{fig:residuos}
+\end{figure}
+
 \section{Interpretación y Factores Determinantes}
-La extracción de las propiedades de importancia intrínseca del modelo XGBoost (Feature Importance) permitió identificar los vectores conductuales y contextuales que detonan el riesgo en salud mental en los adolescentes salvadoreños.
+La extracción de las propiedades de importancia intrínseca del modelo (Feature Importance) permitió identificar los vectores conductuales y contextuales que detonan el riesgo en salud mental en los adolescentes salvadoreños. Las Figuras~\ref{fig:feat_clf} y~\ref{fig:feat_reg} muestran las variables más relevantes para cada tarea.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_clf_best_QN.png}
+\caption{Feature Importance del mejor modelo de clasificación de riesgo en salud mental. Las etiquetas provienen del codebook semántico del proyecto.}
+\label{fig:feat_clf}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_reg_best_QN.png}
+\caption{Feature Importance del mejor modelo de regresión de IMC.}
+\label{fig:feat_reg}
+\end{figure}
 
 Los tres factores con mayor peso predictivo arrojados por el algoritmo corresponden a:
 \begin{enumerate}

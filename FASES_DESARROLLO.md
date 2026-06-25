@@ -74,3 +74,17 @@ A continuación, presento la planificación de las fases de desarrollo actualiza
 
 * Consolidación de gráficos exportados en `reports/figures/`.
 * Redacción del informe técnico final en formato IEEE, contrastando los resultados algorítmicos obtenidos al utilizar variables `Q` vs `QN` y formulando recomendaciones orientadas a la salud pública.
+
+## 🚀 Uso y Ejecución del Pipeline
+
+La orquestación del proyecto se maneja íntegramente a través del `Makefile` para asegurar que el orden de ejecución prevenga la fuga de datos (*Data Leakage*).
+
+Desde la raíz del proyecto, ejecuta los siguientes comandos en tu terminal:
+
+* `make data`: Limpia el dataset, imputa nulos y genera las particiones Train/Test.
+* `make features`: Construye las variables derivadas (ej. IMC) y define los transformadores.
+* `make train`: Entrena y ajusta los hiperparámetros de los modelos y los guarda en `models/`.
+* `make evaluate`: Evalúa el rendimiento de los modelos y genera las métricas.
+* `make test`: Lanza el script de inferencia (`predict.py`) para probar el sistema final contra datos aislados.
+* **`make all`**: Ejecuta el ciclo de vida completo del proyecto de inicio a fin.
+* `make clean`: Elimina archivos temporales, cachés y datos procesados para reiniciar el entorno.
