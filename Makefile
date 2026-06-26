@@ -1,4 +1,4 @@
-PYTHON = venv/Scripts/python
+PYTHON = venv/bin/python
 FEATURE_TYPE ?= QN
 
 .PHONY: all data features train train-reg train-clf evaluate test clean help
