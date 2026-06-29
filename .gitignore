@@ -1,2 +1,21 @@
 __pycache__/
 venv/
+
+# Archivos auxiliares de LaTeX / MiKTeX (se conserva solo el .pdf)
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+*.xdv

@@ -26,9 +26,16 @@ RANDOM_STATE = 42
 
 
 def load_and_clean_survey(filepath: str) -> pd.DataFrame:
-    """Carga el CSV crudo y reemplaza el valor anomalo de punto flotante por NaN."""
+    """Carga el CSV crudo y reemplaza el valor anomalo de punto flotante por NaN.
+
+    El valor anomalo aparece en el CSV como texto, lo que fuerza a las columnas
+    a tipo ``object``. Se reemplaza tanto la version float como la string y luego
+    se coercionan todas las columnas a numerico (el dataset GSHS es completamente
+    numerico una vez removido el centinela).
+    """
     df = pd.read_csv(filepath)
-    df = df.replace(ANOMALOUS_VALUE, np.nan)
+    df = df.replace([ANOMALOUS_VALUE, str(ANOMALOUS_VALUE)], np.nan)
+    df = df.apply(pd.to_numeric, errors="coerce")
     console.print(f"  Cargado: [bold]{df.shape[0]}[/bold] filas x [bold]{df.shape[1]}[/bold] columnas")
     return df
 
@@ -42,11 +49,14 @@ def engineer_targets(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
 
     if "Q4" in out.columns and "Q5" in out.columns:
-        out["IMC"] = out["Q5"] / (out["Q4"] ** 2)
+        q4 = pd.to_numeric(out["Q4"], errors="coerce")
+        q5 = pd.to_numeric(out["Q5"], errors="coerce")
+        out["IMC"] = q5 / (q4 ** 2)
         console.print(f"  IMC calculado: [bold]{out['IMC'].notna().sum()}[/bold] valores validos")
 
     if "Q25" in out.columns:
-        out["Riesgo_Salud_Mental"] = (out["Q25"] == 1).astype(int)
+        q25 = pd.to_numeric(out["Q25"], errors="coerce")
+        out["Riesgo_Salud_Mental"] = (q25 == 1).astype(int)
         n0 = int((out["Riesgo_Salud_Mental"] == 0).sum())
         n1 = int((out["Riesgo_Salud_Mental"] == 1).sum())
         console.print(f"  Riesgo: Sin Riesgo=[bold]{n0}[/bold] | Con Riesgo=[bold]{n1}[/bold]")

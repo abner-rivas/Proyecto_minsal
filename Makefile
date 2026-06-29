@@ -1,7 +1,8 @@
-PYTHON = venv/bin/python
+PYTHON = venv/Scripts/python
 FEATURE_TYPE ?= QN
+REPORT = docs/Reporte_Tecnico_MINSAL_IEEE
 
-.PHONY: all data features train train-reg train-clf evaluate test clean help
+.PHONY: all data features train train-reg train-clf evaluate test report report-clean clean help
 
 ## Pipeline completo: data -> features -> train -> evaluate
 all: data features train evaluate
@@ -33,6 +34,14 @@ evaluate:
 test:
 	$(PYTHON) src/predict.py --task all --evaluate --features $(FEATURE_TYPE)
 
+## Compila el reporte LaTeX a PDF en docs/ (requiere MiKTeX + latexmk)
+report:
+	latexmk -pdf -interaction=nonstopmode -cd $(REPORT).tex
+
+## Elimina los archivos auxiliares de LaTeX (conserva el PDF)
+report-clean:
+	latexmk -c -cd $(REPORT).tex
+
 ## Elimina datos procesados, modelos y figuras
 clean:
 	del /Q data\processed\*.csv 2>nul || true
@@ -57,5 +66,7 @@ help:
 	@echo   evaluate  - Evalua modelos en test set + figuras
 	@echo   test      - Inferencia final sobre test
 	@echo   all       - Pipeline completo
+	@echo   report    - Compila el reporte LaTeX a PDF en docs/
+	@echo   report-clean - Borra auxiliares LaTeX (conserva PDF)
 	@echo   clean     - Elimina datos procesados y modelos
 	@echo   help      - Muestra esta ayuda
