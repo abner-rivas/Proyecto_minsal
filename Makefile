@@ -1,4 +1,12 @@
-PYTHON = venv/Scripts/python
+# Detecta el SO para usar el Python del entorno virtual adecuado:
+#   Windows -> venv/Scripts/python | Linux/macOS -> venv/bin/python
+# En Windows, GNU Make define automaticamente OS=Windows_NT.
+ifeq ($(OS),Windows_NT)
+	PYTHON = venv/Scripts/python
+else
+	PYTHON = venv/bin/python
+endif
+
 FEATURE_TYPE ?= QN
 REPORT = docs/Reporte_Tecnico_MINSAL_IEEE
 
@@ -42,11 +50,9 @@ report:
 report-clean:
 	latexmk -c -cd $(REPORT).tex
 
-## Elimina datos procesados, modelos y figuras
+## Elimina datos procesados, modelos y figuras (portable via Python)
 clean:
-	del /Q data\processed\*.csv 2>nul || true
-	del /Q models\*.joblib 2>nul || true
-	del /Q reports\figures\*.png 2>nul || true
+	$(PYTHON) -c "import glob, os; [os.remove(f) for p in ('data/processed/*.csv','models/*.joblib','reports/figures/*.png') for f in glob.glob(p)]"
 
 ## Muestra los targets disponibles
 help:
