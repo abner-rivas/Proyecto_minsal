@@ -58,20 +58,20 @@ Para la \textbf{Tarea A (Regresión)}, el Índice de Masa Corporal se derivó me
 IMC = \frac{Q5}{(Q4)^2}
 \end{equation}
 
-Para la \textbf{Tarea B (Clasificación)}, se construyó la variable binaria \textit{Riesgo\_Salud\_Mental} a partir de la variable original \texttt{Q25} (y su correspondiente recodificación numérica \texttt{QN25}), la cual indaga sobre la presencia de ideación suicida o sentimientos persistentes de soledad/tristeza. \textbf{Justificación de la elección:} Esta variable fue seleccionada debido a que representa el marcador más severo y directamente asociado con trastornos depresivos mayores en la población adolescente, según los protocolos de la OMS para la GSHS. Detectar este riesgo permite implementar intervenciones tempranas de prevención del suicidio, lo cual es una prioridad de salud pública en El Salvador. Se codificó con el valor $1$ (Presencia de Riesgo Alto) a los estudiantes que reportaron haber considerado seriamente intentar suicidarse en los últimos 12 meses, y con $0$ (Ausencia de Riesgo Clínico) en caso contrario, revelando una prevalencia minoritaria fuertemente sesgada en los datos crudos (aproximadamente 12\% de casos positivos).
+Para la \textbf{Tarea B (Clasificación)}, se construyó la variable binaria \textit{Riesgo\_Salud\_Mental} a partir de la variable original \texttt{Q25} (y su correspondiente recodificación numérica \texttt{QN25}), la cual indaga sobre la presencia de ideación suicida o sentimientos persistentes de soledad/tristeza. \textbf{Justificación de la elección:} Esta variable fue seleccionada debido a que representa el marcador más severo y directamente asociado con trastornos depresivos mayores en la población adolescente, según los protocolos de la OMS para la GSHS. Detectar este riesgo permite implementar intervenciones tempranas de prevención del suicidio, lo cual es una prioridad de salud pública en El Salvador. Se codificó con el valor $1$ (Presencia de Riesgo Alto) a los estudiantes que reportaron haber considerado seriamente intentar suicidarse en los últimos 12 meses, y con $0$ (Ausencia de Riesgo Clínico) en caso contrario, revelando una prevalencia minoritaria fuertemente sesgada en los datos crudos (11.07\% de casos positivos: 212 de 1915 registros).
 
 \subsection{Mitigación del Data Leakage y Multicolinealidad}
 Un pilar fundamental de la rúbrica de evaluación es la prevención del \textit{Data Leakage} (fuga de datos). Para la predicción del IMC, el modelo debe basarse puramente en conductas. En consecuencia, las variables físicas directas $Q4$ (estatura) y $Q5$ (peso) fueron removidas quirúrgicamente de la matriz de características del predictor. De igual forma, la variable base $Q25$ fue excluida de los predictores de clasificación.
 
 Adicionalmente, el dataset original contiene las preguntas en formato categórico bruto ($Q1-Q58$) y simultáneamente sus recodificaciones dicotómicas o numéricas precalculadas por los analistas de la OMS ($QN6-QN58$). Incluir ambas dimensiones induciría una colinealidad perfecta o cuasi-perfecta, destruyendo la estabilidad de los coeficientes de regresión. Se optó por descartar la totalidad de las variables $QN$, manteniendo las preguntas originales para habilitar que las técnicas de codificación modernas capturen las relaciones no lineales complejas sin sesgos preexistentes.
 
-\subsection{Imputación, Codificación y Escalado Robustos}
-Dada la naturaleza categórica no ordinal de las encuestas, la pérdida de datos se subsanó mediante una estrategia de imputación basada en la moda (\textit{most\_frequent}) empleando \texttt{SimpleImputer} de Scikit-Learn. Esto impidió la generación de categorías decimales espurias que irrumpen al usar la media en encuestas sociales.
+\subsection{Imputación y Escalado}
+Las variables seleccionadas corresponden a las preguntas ordinales originales ($Q$), de escala tipo Likert. La pérdida de datos se subsanó mediante imputación por la mediana (\texttt{strategy="median"}) empleando \texttt{SimpleImputer} de Scikit-Learn, estrategia robusta a valores atípicos y coherente con la naturaleza ordinal acotada de las respuestas.
 
-Posteriormente, se aplicó codificación \textit{One-Hot Encoding} con eliminación de la primera columna dummificada (\texttt{drop\_first=True}) para disolver la trampa de la dummificación múltiple. Finalmente, la matriz resultante fue transformada con \texttt{RobustScaler}, el cual utiliza la mediana y los rangos intercuartílicos (\texttt{IQR}), garantizando inmunidad frente a las respuestas atípicas extremas inherentes a los autorreportes de adolescentes.
+Posteriormente, la matriz fue estandarizada con \texttt{StandardScaler}, el cual centra cada variable a media cero y varianza unitaria, preservando la distancia relativa entre los niveles ordinales de la escala Likert y homogeneizando los rangos para los modelos paramétricos. Todo el preprocesamiento se encapsuló dentro de un \texttt{Pipeline} de Scikit-Learn, de modo que el ajuste (\textit{fit}) de imputador y escalador se realiza únicamente sobre el conjunto de entrenamiento dentro de cada \textit{fold} de validación cruzada, previniendo cualquier fuga de información hacia validación y prueba.
 
 \section{Modelado y Resultados Técnicos}
-La experimentación se estructuró dividiendo los conjuntos de datos en un 70\% para entrenamiento, 20\% para validación y 10\% para prueba (o particiones equivalentes), asegurando una estratificación estricta en el caso del modelo de clasificación binaria.
+La experimentación se estructuró dividiendo los conjuntos de datos en un 70\% para entrenamiento, 20\% para validación y 10\% para prueba mediante particiones aleatorias con semilla fija (\texttt{random\_state=42}) para garantizar la reproducibilidad. La selección de hiperparámetros y del umbral de decisión se realizó sobre el conjunto de validación, reservando el conjunto de prueba exclusivamente para la evaluación final. Dado el fuerte desbalance epidemiológico (prevalencia global de 11.07\%), la búsqueda de hiperparámetros empleó validación cruzada estratificada (\texttt{StratifiedKFold}) sobre el conjunto de entrenamiento.
 
 \subsection{Tarea A: Estimación del IMC}
 Se entrenaron de forma comparativa un modelo lineal paramétrico (Regresión Lineal) y un modelo basado en ensambles no lineales (Random Forest Regressor). Los resultados obtenidos se detallan en la Tabla~\ref{tab:regresion}.
@@ -84,13 +84,13 @@ Se entrenaron de forma comparativa un modelo lineal paramétrico (Regresión Lin
 \toprule
 \textbf{Algoritmo} & \textbf{RMSE (kg/m²)} & \textbf{R² Score} \\
 \midrule
-Regresión Lineal & 3.9939 & -0.0520 \\
-Random Forest Regressor & 4.0578 & -0.0859 \\
+Regresión Lineal & 4.0100 & -0.0605 \\
+Random Forest Regressor & \textbf{3.8808} & \textbf{0.0067} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Los resultados muestran que ambos modelos presentan un R² negativo, lo que indica que no logran explicar la varianza del IMC mejor que una predicción basada en la media. Esto es esperable debido a que el IMC es una medida antropométrica directa determinada fundamentalmente por el peso y la estatura, variables que fueron excluidas deliberadamente para evitar data leakage. El modelo de regresión no es adecuado para diagnóstico individual, sino que sirve como un sistema de alerta temprana a nivel poblacional, identificando patrones conductuales de riesgo que se correlacionan con problemas de salud.
+Los resultados muestran que ambos modelos presentan un coeficiente de determinación prácticamente nulo (R² $\approx 0$), lo que indica que apenas logran explicar la varianza del IMC por encima de una predicción basada en la media. El modelo Random Forest, seleccionado como el de mejor desempeño en validación (RMSE = 3.8808), obtuvo sobre el conjunto de prueba un RMSE de 3.7190 y un R² de -0.0318. Esto es esperable debido a que el IMC es una medida antropométrica directa determinada fundamentalmente por el peso y la estatura, variables que fueron excluidas deliberadamente para evitar data leakage. El modelo de regresión no es adecuado para diagnóstico individual, sino que sirve como un sistema de alerta temprana a nivel poblacional, identificando patrones conductuales de riesgo que se correlacionan con problemas de salud.
 
 \subsubsection{Limitaciones del Modelo de Regresión (IMC)}
 Es importante destacar que el modelo de regresión diseñado para estimar el IMC presentó un desempeño limitado en cuanto a su poder predictivo absoluto, evidenciado por un bajo coeficiente de determinación (\(R^2\)) durante la validación cruzada. Este resultado es esperable y se justifica por la naturaleza de los datos y el diseño del experimento. El IMC es una medida antropométrica directa determinada fundamentalmente por el peso y la estatura del individuo. Al haber excluido deliberadamente estas variables ($Q4$ y $Q5$) del conjunto de características para evitar la fuga de datos (*data leakage*), el modelo se vio forzado a inferir el IMC basándose únicamente en factores conductuales indirectos (como hábitos alimenticios, actividad física y tiempo frente a pantallas).
@@ -98,9 +98,9 @@ Es importante destacar que el modelo de regresión diseñado para estimar el IMC
 Por lo tanto, el sistema no está diseñado para ser una herramienta de diagnóstico clínico individual para la obesidad, sino más bien como un sistema de alerta temprana (*early-warning*) a nivel poblacional. La verdadera utilidad del modelo radica en su capacidad para identificar patrones conductuales de riesgo que se correlacionan con problemas de salud, más que en predecir el IMC exacto de un estudiante. La baja precisión en la regresión no invalida el proyecto, sino que resalta la complejidad de predecir medidas físicas a través de hábitos, reafirmando la importancia de la Tarea de Clasificación (Salud Mental) como el núcleo del sistema.
 
 \subsection{Tarea B: Clasificación de Riesgo de Salud Mental}
-El desafío principal de esta tarea radicaba en el marcado desbalance epidemiológico de las clases (donde los casos positivos representan menos del 12\% del total muestral). Para abordarlo, se utilizó el parámetro \texttt{class\_weight='balanced'} en los modelos de Random Forest y Logistic Regression, y \texttt{scale\_pos\_weight} en XGBoost. Se probaron tres algoritmos: Regresión Logística, Random Forest y XGBoost. El mejor rendimiento, medido por F1-Score y AUC-ROC, fue alcanzado por Random Forest.
+El desafío principal de esta tarea radicaba en el marcado desbalance epidemiológico de las clases (donde los casos positivos representan menos del 12\% del total muestral). Para abordarlo, se utilizó el parámetro \texttt{class\_weight='balanced'} en los modelos de Random Forest y Logistic Regression, y \texttt{scale\_pos\_weight} en XGBoost. Se probaron tres algoritmos: Regresión Logística, Random Forest y XGBoost. El mejor rendimiento, medido por el F1-Score sobre la clase minoritaria, fue alcanzado por XGBoost.
 
-Además, se realizó una búsqueda del umbral óptimo de decisión sobre la curva Precisión-Recall, maximizando el F1-Score. El umbral óptimo se localizó en $0.49$. Los resultados en el conjunto de validación se resumen en la Tabla~\ref{tab:clasificacion}.
+Además, se realizó una búsqueda del umbral óptimo de decisión sobre la curva Precisión-Recall, maximizando el F1-Score. Para el modelo ganador (XGBoost), el umbral óptimo se localizó en $0.7012$. Los resultados en el conjunto de validación se resumen en la Tabla~\ref{tab:clasificacion}.
 
 \begin{table}[htbp]
 \caption{Métricas de Clasificación (Validación)}
@@ -110,34 +110,34 @@ Además, se realizó una búsqueda del umbral óptimo de decisión sobre la curv
 \toprule
 \textbf{Algoritmo} & \textbf{F1-Score} & \textbf{AUC-ROC} & \textbf{Umbral Óptimo} \\
 \midrule
-Regresión Logística & 0.6420 & 0.9153 & 0.8151 \\
-Random Forest & \textbf{0.6667} & \textbf{0.9487} & 0.4900 \\
-XGBoost & 0.6420 & 0.9067 & 0.6530 \\
+Regresión Logística & 0.6582 & 0.9236 & 0.6872 \\
+Random Forest & 0.6579 & 0.9437 & 0.5980 \\
+XGBoost & \textbf{0.6905} & 0.9305 & 0.7012 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-El modelo Random Forest optimizado logró un F1-Score de 0.6667 y un AUC de 0.9487, indicando una excelente capacidad discriminativa. La matriz de confusión para el umbral óptimo mostró una reducción significativa de los Falsos Negativos en comparación con el umbral por defecto (0.5), lo que permite identificar a más estudiantes en riesgo sin generar un número excesivo de falsas alarmas.
+El modelo XGBoost optimizado logró un F1-Score de 0.6905 en validación e indicó una excelente capacidad discriminativa. Sobre el conjunto de prueba (test), aplicando el umbral calibrado de 0.7012, el modelo alcanzó un F1-Score de 0.6316 y un AUC-ROC de 0.9535, con una matriz de confusión de 12 verdaderos positivos, 4 falsos negativos, 166 verdaderos negativos y 10 falsos positivos. El uso del umbral calibrado, en lugar del umbral por defecto (0.5), permite identificar a más estudiantes en riesgo sin generar un número excesivo de falsas alarmas.
 
-Adicionalmente, se evaluó la capacidad de discriminación del modelo mediante la Curva ROC (Receiver Operating Characteristic), obteniéndose un Área Bajo la Curva (AUC) de \textbf{0.9487}. Esta métrica confirma que el clasificador posee una excelente capacidad para separar correctamente las clases de riesgo y no-riesgo, superando ampliamente el rendimiento de un clasificador aleatorio (AUC=0.5). La curva ROC correspondiente se presenta en la Figura~\ref{fig:roc}.
+Adicionalmente, se evaluó la capacidad de discriminación del modelo mediante la Curva ROC (Receiver Operating Characteristic), obteniéndose un Área Bajo la Curva (AUC) de \textbf{0.9535} sobre el conjunto de prueba. Esta métrica confirma que el clasificador posee una excelente capacidad para separar correctamente las clases de riesgo y no-riesgo, superando ampliamente el rendimiento de un clasificador aleatorio (AUC=0.5). La curva ROC correspondiente se presenta en la Figura~\ref{fig:roc}.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\linewidth]{../reports/figures/roc_curve_clf_best_QN.png}
-\caption{Curva ROC del mejor modelo de clasificación (Random Forest) optimizado para la detección de riesgo en salud mental.}
+\includegraphics[width=0.8\linewidth]{../reports/figures/roc_curve_clf_best_Q.png}
+\caption{Curva ROC del mejor modelo de clasificación (XGBoost) optimizado para la detección de riesgo en salud mental.}
 \label{fig:roc}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.8\linewidth]{../reports/figures/confusion_matrix_clf_best_QN.png}
-\caption{Matriz de confusión del mejor modelo de clasificación sobre el conjunto de validación, aplicando el umbral óptimo calibrado (0.49).}
+\includegraphics[width=0.8\linewidth]{../reports/figures/confusion_matrix_clf_best_Q.png}
+\caption{Matriz de confusión del mejor modelo de clasificación (XGBoost) sobre el conjunto de prueba, aplicando el umbral óptimo calibrado (0.7012).}
 \label{fig:confusion}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\linewidth]{../reports/figures/residuos_reg_best_QN.png}
+\includegraphics[width=0.85\linewidth]{../reports/figures/residuos_reg_best_Q.png}
 \caption{Análisis de residuos del modelo de regresión (IMC): dispersión de residuos vs. predicción y distribución de errores.}
 \label{fig:residuos}
 \end{figure}
@@ -147,32 +147,36 @@ La extracción de las propiedades de importancia intrínseca del modelo (Feature
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_clf_best_QN.png}
-\caption{Feature Importance del mejor modelo de clasificación de riesgo en salud mental (Random Forest). Las etiquetas provienen del codebook semántico del proyecto.}
+\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_clf_best_Q.png}
+\caption{Feature Importance del mejor modelo de clasificación de riesgo en salud mental (XGBoost). Las etiquetas provienen del codebook semántico del proyecto.}
 \label{fig:feat_clf}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_reg_best_QN.png}
+\includegraphics[width=0.85\linewidth]{../reports/figures/feature_importance_reg_best_Q.png}
 \caption{Feature Importance del mejor modelo de regresión de IMC (Random Forest).}
 \label{fig:feat_reg}
 \end{figure}
 
-Los tres factores con mayor peso predictivo arrojados por el algoritmo corresponden a:
+Los factores con mayor peso predictivo arrojados por el algoritmo (XGBoost) corresponden a:
 \begin{enumerate}
-    \item \textbf{Acoso Escolar (Bullying):} La frecuencia de agresiones físicas o verbales dentro de las instalaciones escolares representó el predictor con mayor ganancia de información en los árboles de decisión.
-    \item \textbf{Ausencia de Factores de Protección Familiar:} Variables asociadas al monitoreo y acompañamiento de los padres (conocimiento de qué hacen los jóvenes en su tiempo libre o comprensión de sus problemas) exhibieron una correlación inversa directa con la presencia de riesgo.
-    \item \textbf{Consumo Temprano de Sustancias:} El acceso y consumo precoz de alcohol y tabaco actúa como un fuerte catalizador de desequilibrio emocional y sintomatología de riesgo.
+    \item \textbf{Soledad y Aislamiento Social ($Q24$):} La frecuencia con que el estudiante se sintió solo constituyó, por amplio margen, el predictor dominante (importancia $\approx 0.33$, superior a la suma del resto de variables). El aislamiento social emerge como el principal marcador conductual del riesgo en salud mental.
+    \item \textbf{Antecedentes de Suicidalidad ($Q26$, $Q27$):} La existencia de un plan de intento de suicidio y el número de intentos previos figuran entre los predictores de mayor peso. Cabe advertir que estas variables pertenecen al mismo módulo de suicidalidad que la variable objetivo, por lo que su elevada importancia debe interpretarse como una correlación clínica esperada y no como un hallazgo conductual independiente (véase la discusión de limitaciones).
+    \item \textbf{Consumo de Sustancias ($Q22$):} El consumo de anfetaminas u otras sustancias sin prescripción médica actúa como un catalizador relevante de desequilibrio emocional y sintomatología de riesgo.
 \end{enumerate}
+
+De forma secundaria, dentro de las diez variables más importantes también aparecen factores contextuales coherentes con la literatura: la percepción de inseguridad y la presencia de armas en la escuela ($Q38$, $Q37$), el acoso escolar o \textit{bullying} ($Q23$), la supervisión de los padres o tutores ($Q40$) y los hábitos de sueño ($Q14$). Aunque su peso individual es moderado, en conjunto refuerzan el carácter multifactorial del riesgo.
 
 \section{Recomendaciones de Política Pública}
 Traduciendo los hallazgos técnicos en decisiones estratégicas para el despacho ministerial, se plantean los siguientes ejes de intervención focalizada:
 
 \begin{itemize}
-    \item \textbf{Despliegue de Unidades Móviles de Salud Mental Escolar:} Utilizando el modelo predictivo optimizado (umbral 0.49), el MINSAL puede mapear y clasificar los centros escolares del país. Aquellas escuelas cuyas encuestas agregadas arrojen altas probabilidades de riesgo colectivo deben recibir de forma prioritaria la asignación de psicólogos en planta, optimizando el presupuesto público del plan nacional de salud.
+    \item \textbf{Despliegue de Unidades Móviles de Salud Mental Escolar:} Utilizando el modelo predictivo optimizado (umbral 0.7012), el MINSAL puede mapear y clasificar los centros escolares del país. Aquellas escuelas cuyas encuestas agregadas arrojen altas probabilidades de riesgo colectivo deben recibir de forma prioritaria la asignación de psicólogos en planta, optimizando el presupuesto público del plan nacional de salud.
 
-    \item \textbf{Intervención Interinstitucional MINSAL-MINED contra el Bullying:} Dado que el acoso escolar es la variable predictora predominante, no es posible solucionar la salud mental desde un enfoque puramente hospitalario. Se vuelve mandatorio co-diseñar junto al Ministerio de Educación protocolos vinculantes de prevención de violencia escolar, actuando directamente sobre la raíz del vector de riesgo.
+    \item \textbf{Programas de Combate a la Soledad y el Aislamiento Social:} Dado que la soledad es el predictor dominante del riesgo, las intervenciones deben priorizar la construcción de vínculos y pertenencia en el entorno escolar. La detección temprana de estudiantes socialmente aislados debe activar rutas de acompañamiento psicosocial.
+
+    \item \textbf{Intervención Interinstitucional MINSAL-MINED contra el Bullying:} El acoso escolar y la inseguridad en el centro educativo figuran entre los factores contextuales relevantes del modelo. Se recomienda co-diseñar junto al Ministerio de Educación protocolos vinculantes de prevención de violencia escolar, actuando sobre este vector de riesgo de manera complementaria a la atención clínica.
 
     \item \textbf{Red de Alerta Temprana Automatizada:} Implementar a nivel nacional la infraestructura digital necesaria para que la GSHS u otros instrumentos de tamizaje escolar se digitalicen y procesen en tiempo real por este pipeline predictivo. Esto facultará a las regiones de salud del MINSAL a recibir alertas tempranas semestrales y mitigar incidentes de autolesión antes de su ocurrencia.
 
