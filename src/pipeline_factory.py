@@ -1,79 +1,110 @@
-# src/pipeline_factory.py
+"""
+src/pipeline_factory.py
+
+Constructores de Pipelines de Scikit-Learn para las dos tareas del proyecto.
+Soporta dos tipos de features:
+
+  QN (binarias 0/1): SimpleImputer(median) -> RobustScaler()
+  Q  (ordinales 1-7): SimpleImputer(median) -> StandardScaler()
+
+Y multiples estimadores por tarea:
+  Regresion:     LinearRegression (baseline), RandomForestRegressor
+  Clasificacion: LogisticRegression (baseline), RandomForestClassifier, XGBClassifier
+"""
 
 from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.compose import make_column_selector
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, RobustScaler
+from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from xgboost import XGBClassifier
-from sklearn.ensemble import RandomForestRegressor
-
-def build_preprocessor():
-    """
-    Construye el preprocesador unificado para datos categóricos y numéricos.
-    
-    NOTA TÉCNICA: Dado que en la Fase 2 (Feature Engineering) convertimos todas 
-    las variables predictoras a tipo 'str', el selector 'make_column_selector' 
-    las detectará automáticamente como categóricas. Si en el futuro se añaden 
-    columnas numéricas (ej. 'int64'), el flujo numérico aplicará RobustScaler.
-    """
-    # Pipeline especializado para variables numéricas (edad, peso, etc.)
-    numeric_transformer = Pipeline([
-        ('imputer', SimpleImputer(strategy='median')),
-        ('scaler', RobustScaler())
-    ])
-    
-    # Pipeline especializado para variables categóricas o de texto
-    categorical_transformer = Pipeline([
-        ('imputer', SimpleImputer(strategy='most_frequent')),
-        ('encoder', OneHotEncoder(handle_unknown='ignore', drop='first', sparse_output=False))
-    ])
-    
-    # El procesador inteligente: Aplica cada flujo según el tipo de columna automáticamente
-    preprocessor = ColumnTransformer(transformers=[
-        ('num', numeric_transformer, make_column_selector(dtype_include=['int64', 'float64'])),
-        ('cat', categorical_transformer, make_column_selector(dtype_include=['object', 'category', 'bool']))
-    ], remainder='passthrough')
-    
-    return preprocessor
 
 
-def build_classification_pipeline(scale_pos_weight, best_params=None):
+def build_preprocessor(feature_type: str = "QN") -> Pipeline:
     """
-    Construye el Pipeline para la Tarea B: Clasificación de Riesgo en Salud Mental.
-    Utiliza XGBoost con balanceo de clases interno (scale_pos_weight).
-    
-    Args:
-        scale_pos_weight (float): Relación entre la clase negativa y la positiva.
-        best_params (dict, optional): Hiperparámetros extra para el clasificador.
+    Preprocesador adaptado al tipo de features:
+      QN (binarias): mediana + RobustScaler (robusto a distribucion sesgada 0/1)
+      Q  (ordinales): mediana + StandardScaler (preserva distancia ordinal)
     """
-    if best_params is None:
-        best_params = {}
-        
+    if feature_type.upper() == "Q":
+        return Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ])
     return Pipeline([
-        ('preprocessor', build_preprocessor()),
-        ('classifier', XGBClassifier(
-            scale_pos_weight=scale_pos_weight,
-            use_label_encoder=False,
-            eval_metric='logloss',
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", RobustScaler()),
+    ])
+
+
+def build_regression_pipeline(
+    feature_type: str = "QN",
+    model: str = "rf",
+    best_params: dict | None = None,
+) -> Pipeline:
+    """
+    Pipeline para Tarea A: Prediccion de IMC.
+
+    Args:
+        feature_type: "Q" o "QN"
+        model: "lr" (LinearRegression) o "rf" (RandomForestRegressor)
+        best_params: hiperparametros para el estimador (solo RF)
+    """
+    prep = build_preprocessor(feature_type)
+    if model == "lr":
+        return Pipeline([
+            ("preprocessor", prep),
+            ("regressor", LinearRegression()),
+        ])
+    return Pipeline([
+        ("preprocessor", prep),
+        ("regressor", RandomForestRegressor(
             random_state=42,
-            **best_params
-        ))
+            **(best_params or {}),
+        )),
     ])
 
 
-def build_regression_pipeline(best_params=None):
+def build_classification_pipeline(
+    feature_type: str = "QN",
+    model: str = "xgb",
+    scale_pos_weight: float = 1.0,
+    best_params: dict | None = None,
+) -> Pipeline:
     """
-    Construye el Pipeline para la Tarea A: Regresión del Índice de Masa Corporal (IMC).
-    Utiliza RandomForestRegressor como modelo base, el cual maneja bien la no linealidad.
-    
+    Pipeline para Tarea B: Clasificacion de Riesgo en Salud Mental.
+
     Args:
-        best_params (dict, optional): Hiperparámetros extra para el regresor.
+        feature_type: "Q" o "QN"
+        model: "lr" (LogisticRegression), "rf" (RandomForestClassifier), "xgb" (XGBClassifier)
+        scale_pos_weight: ratio de desbalance (solo para XGB)
+        best_params: hiperparametros para el estimador (RF o XGB)
     """
-    if best_params is None:
-        best_params = {}
-        
+    prep = build_preprocessor(feature_type)
+    if model == "lr":
+        return Pipeline([
+            ("preprocessor", prep),
+            ("classifier", LogisticRegression(
+                class_weight="balanced",
+                max_iter=1000,
+                random_state=42,
+            )),
+        ])
+    elif model == "rf":
+        return Pipeline([
+            ("preprocessor", prep),
+            ("classifier", RandomForestClassifier(
+                class_weight="balanced",
+                random_state=42,
+                **(best_params or {}),
+            )),
+        ])
     return Pipeline([
-        ('preprocessor', build_preprocessor()),
-        ('regressor', RandomForestRegressor(random_state=42, **best_params))
+        ("preprocessor", prep),
+        ("classifier", XGBClassifier(
+            scale_pos_weight=scale_pos_weight,
+            eval_metric="logloss",
+            random_state=42,
+            **(best_params or {}),
+        )),
     ])
